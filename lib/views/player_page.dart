@@ -1,11 +1,9 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
-import '../models/music_track.dart';
 import '../viewmodels/music_library_viewmodel.dart';
+import 'music_queue_page.dart';
 import 'widgets/app_background.dart';
 import 'widgets/cover_art.dart';
 
@@ -20,15 +18,7 @@ class PlayerPage extends StatefulWidget {
 
 class _PlayerPageState extends State<PlayerPage> {
   bool _didInit = false;
-  bool _isPlaying = true;
   bool _isFavorite = false;
-  bool _isShuffle = false;
-  bool _isRepeat = false;
-  double _progress = 0.38;
-  MusicTrack? _currentTrack;
-  int? _currentIndex;
-
-  static const int _totalSeconds = 6 * 60 + 22;
 
   @override
   void didChangeDependencies() {
@@ -37,6 +27,10 @@ class _PlayerPageState extends State<PlayerPage> {
     _didInit = true;
 
     final vm = context.read<MusicLibraryViewModel>();
+    if (vm.tracks.isNotEmpty || vm.queue.isNotEmpty || vm.currentTrack != null) {
+      return;
+    }
+
     vm.loadLocalLibrary().then((_) {
       if (vm.tracks.isEmpty) {
         vm.scanDeviceAndSave();
@@ -44,11 +38,11 @@ class _PlayerPageState extends State<PlayerPage> {
     });
   }
 
-  String _formatTime(int seconds) {
-    final minutes = seconds ~/ 60;
-    final remain = seconds % 60;
-    final padded = remain.toString().padLeft(2, '0');
-    return '$minutes:$padded';
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   void _showToast(String message) {
@@ -63,125 +57,9 @@ class _PlayerPageState extends State<PlayerPage> {
       );
   }
 
-  void _maybeInitCurrentTrack(MusicLibraryViewModel vm) {
-    if (vm.tracks.isEmpty) return;
-    if (_currentIndex != null && _currentIndex! < vm.tracks.length) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() {
-        _currentIndex = 0;
-        _currentTrack = vm.tracks.first;
-        _isPlaying = false;
-        _progress = 0;
-      });
-    });
-  }
-
-  Future<void> _playTrackAt(MusicLibraryViewModel vm, int index) async {
-    if (index < 0 || index >= vm.tracks.length) return;
-    final track = vm.tracks[index];
-    setState(() {
-      _currentTrack = track;
-      _currentIndex = index;
-      _isPlaying = true;
-      _progress = 0;
-    });
-    await vm.play(track);
-    _showToast('Ðang phát: ${track.title}');
-  }
-
-  Future<void> _playNext(MusicLibraryViewModel vm) async {
-    if (vm.tracks.isEmpty) {
-      _showToast('Chua có bài d? phát');
-      return;
-    }
-
-    final current = _currentIndex ?? 0;
-    int nextIndex;
-    if (_isShuffle && vm.tracks.length > 1) {
-      final rand = Random();
-      do {
-        nextIndex = rand.nextInt(vm.tracks.length);
-      } while (nextIndex == current);
-    } else {
-      nextIndex = (current + 1) % vm.tracks.length;
-    }
-
-    await _playTrackAt(vm, nextIndex);
-  }
-
-  Future<void> _playPrevious(MusicLibraryViewModel vm) async {
-    if (vm.tracks.isEmpty) {
-      _showToast('Chua có bài d? phát');
-      return;
-    }
-
-    final current = _currentIndex ?? 0;
-    int prevIndex;
-    if (_isShuffle && vm.tracks.length > 1) {
-      final rand = Random();
-      do {
-        prevIndex = rand.nextInt(vm.tracks.length);
-      } while (prevIndex == current);
-    } else {
-      prevIndex = (current - 1 + vm.tracks.length) % vm.tracks.length;
-    }
-
-    await _playTrackAt(vm, prevIndex);
-  }
-
-  Widget _buildLibraryContent(MusicLibraryViewModel vm, ScrollController controller) {
-    if (vm.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (vm.error != null) {
-      return Center(
-        child: Text(
-          vm.error!,
-          style: const TextStyle(color: Colors.white70),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
-    if (vm.tracks.isEmpty) {
-      return const Center(
-        child: Text(
-          'Chua tìm th?y file .mp3 trên thi?t b?.',
-          style: TextStyle(color: Colors.white60),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      controller: controller,
-      itemCount: vm.tracks.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final track = vm.tracks[index];
-        final isCurrent = _currentTrack?.id == track.id;
-        return ListTile(
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          title: Text(
-            track.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            track.artist,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFF97A5BE)),
-          ),
-          trailing: isCurrent
-              ? const Icon(Icons.graphic_eq_rounded, color: Color(0xFF37C8FF))
-              : null,
-          onTap: () => _playTrackAt(vm, index),
-        );
-      },
+  Future<void> _openAllSongs() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const MusicQueuePage()),
     );
   }
 
@@ -189,235 +67,272 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final vm = context.watch<MusicLibraryViewModel>();
-    final currentSeconds = (_totalSeconds * _progress).round();
 
-    _maybeInitCurrentTrack(vm);
-
-    final title = _currentTrack?.title ?? l10n.nowPlayingSong;
-    final artist = _currentTrack?.artist ?? l10n.nowPlayingArtist;
+    final currentTrack = vm.currentTrack;
+    final title = currentTrack?.title ?? l10n.nowPlayingSong;
+    final artist = currentTrack?.artist ?? l10n.nowPlayingArtist;
+    final totalDuration = vm.currentDuration.inMilliseconds > 0
+        ? vm.currentDuration
+        : Duration(milliseconds: currentTrack?.durationMs ?? 0);
 
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
-          child: Stack(
+          child: Column(
             children: [
-              Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: widget.onBack,
-                          icon: const Icon(Icons.chevron_left_rounded, size: 34),
-                        ),
-                        const Spacer(),
-                        Text(
-                          l10n.playingNow,
-                          style: const TextStyle(
-                            letterSpacing: 3,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: () => _showToast('Danh sách phát'),
-                          icon: const Icon(Icons.queue_music_rounded),
-                        ),
-                      ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: widget.onBack,
+                      icon: const Icon(Icons.chevron_left_rounded, size: 34),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const CoverArt(
-                    size: 280,
-                    radius: 32,
-                    imagePath: 'assets/images/cover_awaken.png',
-                  ),
-                  const SizedBox(height: 22),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
+                    const Spacer(),
+                    Text(
+                      l10n.playingNow,
+                      style: const TextStyle(
+                        letterSpacing: 3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: _openAllSongs,
+                      icon: const Icon(Icons.queue_music_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const CoverArt(
+                size: 280,
+                radius: 32,
+                imagePath: 'assets/images/cover_awaken.gif',
+              ),
+              const SizedBox(height: 22),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            setState(() => _isFavorite = !_isFavorite);
-                            _showToast(_isFavorite ? 'Ðã thêm yêu thích' : 'Ðã b? yêu thích');
-                          },
-                          icon: Icon(
-                            _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            color: _isFavorite ? const Color(0xFFFF5D6C) : Colors.white,
+                          const SizedBox(height: 6),
+                          Text(
+                            artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF97A5BE),
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        artist,
-                        style: const TextStyle(color: Color(0xFF97A5BE), fontSize: 16),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    IconButton(
+                      onPressed: () {
+                        setState(() => _isFavorite = !_isFavorite);
+                        _showToast(
+                          _isFavorite ? 'Added to favorites' : 'Removed from favorites',
+                        );
+                      },
+                      icon: Icon(
+                        _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: _isFavorite ? const Color(0xFFFF5D6C) : Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: _openAllSongs,
+                  child: Ink(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF17202D),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white10),
+                    ),
                     child: Column(
                       children: [
-                        Slider(
-                          value: _progress,
-                          onChanged: (value) => setState(() => _progress = value),
-                          activeColor: const Color(0xFF37C8FF),
-                          inactiveColor: const Color(0xFF2A3648),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                vm.queue.isEmpty
+                                    ? 'Queue is empty'
+                                    : 'Playing queue ${vm.currentIndex + 1}/${vm.queue.length}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF223047),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                totalDuration.inMilliseconds > 0
+                                    ? _formatDuration(totalDuration)
+                                    : '--:--',
+                                style: const TextStyle(fontSize: 12, color: Colors.white70),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 4,
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                          ),
+                          child: Slider(
+                            value: vm.progress,
+                            onChanged: totalDuration.inMilliseconds <= 0
+                                ? null
+                                : (value) => vm.seekToFraction(value),
+                            activeColor: const Color(0xFF37C8FF),
+                            inactiveColor: const Color(0xFF2A3648),
+                          ),
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(_formatTime(currentSeconds)),
-                            const Text(
-                              '6:22',
-                              style: TextStyle(color: Color(0xFF97A5BE)),
+                            Text(_formatDuration(vm.currentPosition)),
+                            Text(
+                              totalDuration.inMilliseconds > 0
+                                  ? _formatDuration(totalDuration)
+                                  : '--:--',
+                              style: const TextStyle(color: Color(0xFF97A5BE)),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF223047),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.library_music_rounded,
+                                      size: 16,
+                                      color: Color(0xFF37C8FF),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${vm.tracks.length} MP3 songs',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.open_in_new_rounded, color: Color(0xFF97A5BE)),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 120),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          onPressed: () {
-                            setState(() => _isShuffle = !_isShuffle);
-                            _showToast(_isShuffle ? 'B?t phát ng?u nhiên' : 'T?t phát ng?u nhiên');
-                          },
-                          icon: Icon(
-                            Icons.shuffle_rounded,
-                            color: _isShuffle ? const Color(0xFF37C8FF) : Colors.white,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => _playPrevious(vm),
-                          icon: const Icon(Icons.skip_previous_rounded, size: 32),
-                        ),
-                        Container(
-                          height: 72,
-                          width: 72,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFF1C7DFF),
-                          ),
-                          child: IconButton(
-                            onPressed: () {
-                              if (_isPlaying) {
-                                vm.pause();
-                                setState(() => _isPlaying = false);
-                                _showToast('Ðã t?m d?ng');
-                              } else {
-                                if (_currentIndex == null && vm.tracks.isNotEmpty) {
-                                  _playTrackAt(vm, 0);
-                                } else if (_currentTrack != null) {
-                                  vm.play(_currentTrack!);
-                                  setState(() => _isPlaying = true);
-                                  _showToast('Ti?p t?c phát');
-                                }
-                              }
-                            },
-                            icon: Icon(
-                              _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                              size: 36,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => _playNext(vm),
-                          icon: const Icon(Icons.skip_next_rounded, size: 32),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            setState(() => _isRepeat = !_isRepeat);
-                            _showToast(_isRepeat ? 'B?t l?p l?i' : 'T?t l?p l?i');
-                          },
-                          icon: Icon(
-                            Icons.repeat_rounded,
-                            color: _isRepeat ? const Color(0xFF37C8FF) : Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-              DraggableScrollableSheet(
-                initialChildSize: 0.12,
-                minChildSize: 0.10,
-                maxChildSize: 0.55,
-                builder: (context, controller) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B2432),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.35),
-                          blurRadius: 18,
-                          offset: const Offset(0, -6),
-                        ),
-                      ],
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 120),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        vm.toggleShuffle();
+                        _showToast(vm.isShuffle ? 'Shuffle on' : 'Shuffle off');
+                      },
+                      icon: Icon(
+                        Icons.shuffle_rounded,
+                        color: vm.isShuffle ? const Color(0xFF37C8FF) : Colors.white,
+                      ),
                     ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 8),
-                        Container(
-                          width: 42,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 4, 4),
-                          child: Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Nh?c trên thi?t b?',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: vm.isLoading ? null : vm.scanDeviceAndSave,
-                                icon: const Icon(Icons.refresh_rounded),
-                                tooltip: 'Quét nh?c',
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        Expanded(child: _buildLibraryContent(vm, controller)),
-                      ],
+                    IconButton(
+                      onPressed: vm.queue.isEmpty ? null : vm.playPrevious,
+                      icon: const Icon(Icons.skip_previous_rounded, size: 32),
                     ),
-                  );
-                },
+                    Container(
+                      height: 72,
+                      width: 72,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF1C7DFF),
+                      ),
+                      child: IconButton(
+                        onPressed: vm.queue.isEmpty
+                            ? null
+                            : () async {
+                                if (vm.isPlaying) {
+                                  await vm.pause();
+                                  if (!mounted) return;
+                                  _showToast('Paused');
+                                } else {
+                                  await vm.playOrResume();
+                                  if (!mounted) return;
+                                  _showToast('Playing');
+                                }
+                              },
+                        icon: Icon(
+                          vm.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          size: 36,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: vm.queue.isEmpty ? null : vm.playNext,
+                      icon: const Icon(Icons.skip_next_rounded, size: 32),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        vm.toggleRepeat();
+                        _showToast(vm.isRepeat ? 'Repeat on' : 'Repeat off');
+                      },
+                      icon: Icon(
+                        Icons.repeat_rounded,
+                        color: vm.isRepeat ? const Color(0xFF37C8FF) : Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

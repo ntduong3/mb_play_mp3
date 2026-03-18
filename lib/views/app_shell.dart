@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../viewmodels/music_library_viewmodel.dart';
 import 'artist_page.dart';
 import 'home_page.dart';
 import 'player_page.dart';
@@ -15,6 +17,14 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MusicLibraryViewModel>().loadLocalLibrary();
+    });
+  }
 
   void _openArtist() {
     Navigator.of(context).push(
@@ -38,9 +48,9 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomePage(onOpenArtist: _openArtist),
+      HomePage(onOpenArtist: _openArtist, onOpenPlayer: _openPlayer),
       const SearchPage(),
-      HomePage(onOpenArtist: _openArtist),
+      HomePage(onOpenArtist: _openArtist, onOpenPlayer: _openPlayer),
     ];
 
     return Scaffold(

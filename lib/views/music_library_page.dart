@@ -33,7 +33,7 @@ class MusicLibraryPage extends StatelessWidget {
                     return ListTile(
                       title: Text(track.title),
                       subtitle: Text(track.artist),
-                      onTap: () => vm.play(track),
+                      onTap: () => vm.playTrack(track, fromQueue: vm.tracks),
                     );
                   },
                 ),
