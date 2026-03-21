@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In vi, this message translates to:
-  /// **'MB Play MP3'**
+  /// **'Local Mp3'**
   String get appTitle;
 
   /// No description provided for @helloUser.
@@ -113,31 +113,31 @@ abstract class AppLocalizations {
   /// No description provided for @helloSubtitle.
   ///
   /// In vi, this message translates to:
-  /// **'Sẵn sàng đắm chìm trong thế giới âm nhạc?'**
+  /// **'S?n sàng d?m chìm trong th? gi?i âm nh?c?'**
   String get helloSubtitle;
 
   /// No description provided for @recommendations.
   ///
   /// In vi, this message translates to:
-  /// **'Gợi ý'**
+  /// **'G?i ý'**
   String get recommendations;
 
   /// No description provided for @recentListenings.
   ///
   /// In vi, this message translates to:
-  /// **'Nghe gần đây'**
+  /// **'Nghe g?n dây'**
   String get recentListenings;
 
   /// No description provided for @topAlbums.
   ///
   /// In vi, this message translates to:
-  /// **'Album nổi bật'**
+  /// **'Album n?i b?t'**
   String get topAlbums;
 
   /// No description provided for @searchPlaceholder.
   ///
   /// In vi, this message translates to:
-  /// **'Tìm bài hát, nghệ sĩ, album hoặc playlist'**
+  /// **'Tìm bài hát, ngh? si, album ho?c playlist'**
   String get searchPlaceholder;
 
   /// No description provided for @genreRap.
@@ -173,7 +173,7 @@ abstract class AppLocalizations {
   /// No description provided for @playingNow.
   ///
   /// In vi, this message translates to:
-  /// **'ĐANG PHÁT'**
+  /// **'ÐANG PHÁT'**
   String get playingNow;
 
   /// No description provided for @nowPlayingSong.
@@ -197,7 +197,7 @@ abstract class AppLocalizations {
   /// No description provided for @artistBio.
   ///
   /// In vi, this message translates to:
-  /// **'Donald McKinley Glover Jr. (sinh 25 tháng 9, 1983), còn được biết đến với nghệ danh Childish Gambino, là một nghệ sĩ người Mỹ...'**
+  /// **'Donald McKinley Glover Jr. (sinh 25 tháng 9, 1983), còn du?c bi?t d?n v?i ngh? danh Childish Gambino, là m?t ngh? si ngu?i M?...'**
   String get artistBio;
 
   /// No description provided for @albums.
@@ -209,7 +209,7 @@ abstract class AppLocalizations {
   /// No description provided for @popularTracks.
   ///
   /// In vi, this message translates to:
-  /// **'Bài hát nổi bật'**
+  /// **'Bài hát n?i b?t'**
   String get popularTracks;
 
   /// No description provided for @albumAwaken.

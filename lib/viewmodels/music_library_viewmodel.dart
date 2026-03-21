@@ -14,6 +14,10 @@ import '../services/local/local_music_service.dart';
 import '../services/local/permission_service.dart';
 
 class MusicLibraryViewModel extends ChangeNotifier {
+  static const String allTracksQueueLabel = 'All MP3 Songs';
+  static const String recentQueueLabel = 'Recently Played';
+  static const String favoriteQueueLabel = 'Favorites';
+
   final ApiClient apiClient;
   final LocalMusicService localService;
   final AudioPlayerService audioService;
@@ -40,6 +44,7 @@ class MusicLibraryViewModel extends ChangeNotifier {
   List<MusicTrack> _tracks = [];
   List<MusicTrack> _queue = [];
   List<MusicTrack> _recentTracks = [];
+  List<MusicTrack> _favoriteTracks = [];
   MusicTrack? _currentTrack;
   int _currentIndex = -1;
   Duration _currentDuration = Duration.zero;
@@ -47,12 +52,14 @@ class MusicLibraryViewModel extends ChangeNotifier {
   bool _isPlaying = false;
   bool _isShuffle = false;
   bool _isRepeat = false;
+  String _activeQueueLabel = allTracksQueueLabel;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
   List<MusicTrack> get tracks => List.unmodifiable(_tracks);
   List<MusicTrack> get queue => List.unmodifiable(_queue);
   List<MusicTrack> get recentTracks => List.unmodifiable(_recentTracks);
+  List<MusicTrack> get favoriteTracks => List.unmodifiable(_favoriteTracks);
   MusicTrack? get currentTrack => _currentTrack;
   int get currentIndex => _currentIndex;
   Duration get currentDuration => _currentDuration;
@@ -60,6 +67,7 @@ class MusicLibraryViewModel extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   bool get isShuffle => _isShuffle;
   bool get isRepeat => _isRepeat;
+  String get activeQueueLabel => _activeQueueLabel;
 
   double get progress {
     if (_currentDuration.inMilliseconds <= 0) {
@@ -70,11 +78,20 @@ class MusicLibraryViewModel extends ChangeNotifier {
         .toDouble();
   }
 
+  bool isFavoriteTrack(MusicTrack? track) {
+    if (track == null) {
+      return false;
+    }
+    return _favoriteTracks.any((item) => item.id == track.id);
+  }
+
   Future<void> loadLocalLibrary() async {
     _setLoading(true);
     try {
       _tracks = localService.getAllTracks();
-      _recentTracks = _hydrateRecentTracks(localService.getRecentTracks());
+      _recentTracks =
+          _hydrateWithTracks(localService.getRecentTracks(), limit: 5);
+      _favoriteTracks = _hydrateWithTracks(localService.getFavoriteTracks());
       _error = null;
       _syncQueueWithTracks();
     } catch (e) {
@@ -102,7 +119,9 @@ class MusicLibraryViewModel extends ChangeNotifier {
       await localService.clearAll();
       await localService.saveTracks(scanned);
       _tracks = localService.getAllTracks();
-      _recentTracks = _hydrateRecentTracks(localService.getRecentTracks());
+      _recentTracks =
+          _hydrateWithTracks(localService.getRecentTracks(), limit: 5);
+      _favoriteTracks = _hydrateWithTracks(localService.getFavoriteTracks());
       _error = null;
       _syncQueueWithTracks(forceReset: true);
     } catch (e) {
@@ -118,7 +137,9 @@ class MusicLibraryViewModel extends ChangeNotifier {
       final remoteTracks = await _remoteService.fetchTracks();
       await localService.saveTracks(remoteTracks);
       _tracks = localService.getAllTracks();
-      _recentTracks = _hydrateRecentTracks(localService.getRecentTracks());
+      _recentTracks =
+          _hydrateWithTracks(localService.getRecentTracks(), limit: 5);
+      _favoriteTracks = _hydrateWithTracks(localService.getFavoriteTracks());
       _error = null;
       _syncQueueWithTracks();
     } catch (e) {
@@ -131,11 +152,14 @@ class MusicLibraryViewModel extends ChangeNotifier {
   Future<void> playTrack(
     MusicTrack track, {
     List<MusicTrack>? fromQueue,
+    String? queueLabel,
   }) async {
     if (fromQueue != null && fromQueue.isNotEmpty) {
       _queue = List<MusicTrack>.from(fromQueue);
+      _activeQueueLabel = queueLabel ?? _activeQueueLabel;
     } else if (_queue.isEmpty) {
       _queue = List<MusicTrack>.from(_tracks);
+      _activeQueueLabel = allTracksQueueLabel;
     }
 
     final index = _queue.indexWhere((item) => item.id == track.id);
@@ -155,12 +179,58 @@ class MusicLibraryViewModel extends ChangeNotifier {
 
   Future<void> playAtIndex(int index) async {
     if (index < 0 || index >= _queue.length) return;
-    await playTrack(_queue[index], fromQueue: _queue);
+    await playTrack(
+      _queue[index],
+      fromQueue: _queue,
+      queueLabel: _activeQueueLabel,
+    );
   }
 
   Future<void> playRecentAt(int index) async {
     if (index < 0 || index >= _recentTracks.length) return;
-    await playTrack(_recentTracks[index], fromQueue: _recentTracks);
+    await playTrack(
+      _recentTracks[index],
+      fromQueue: _recentTracks,
+      queueLabel: recentQueueLabel,
+    );
+  }
+
+  Future<void> playFavoriteAt(int index) async {
+    if (index < 0 || index >= _favoriteTracks.length) return;
+    await playTrack(
+      _favoriteTracks[index],
+      fromQueue: _favoriteTracks,
+      queueLabel: favoriteQueueLabel,
+    );
+  }
+
+  Future<void> playFavorites({int startIndex = 0}) async {
+    if (_favoriteTracks.isEmpty) return;
+    final safeIndex = startIndex.clamp(0, _favoriteTracks.length - 1) as int;
+    await playTrack(
+      _favoriteTracks[safeIndex],
+      fromQueue: _favoriteTracks,
+      queueLabel: favoriteQueueLabel,
+    );
+  }
+
+  Future<void> playAllTrackAt(int index) async {
+    if (index < 0 || index >= _tracks.length) return;
+    await playTrack(
+      _tracks[index],
+      fromQueue: _tracks,
+      queueLabel: allTracksQueueLabel,
+    );
+  }
+
+  Future<void> playAllTracks({int startIndex = 0}) async {
+    if (_tracks.isEmpty) return;
+    final safeIndex = startIndex.clamp(0, _tracks.length - 1) as int;
+    await playTrack(
+      _tracks[safeIndex],
+      fromQueue: _tracks,
+      queueLabel: allTracksQueueLabel,
+    );
   }
 
   Future<void> playOrResume() async {
@@ -169,6 +239,7 @@ class MusicLibraryViewModel extends ChangeNotifier {
         await playAtIndex(_currentIndex >= 0 ? _currentIndex : 0);
       } else if (_tracks.isNotEmpty) {
         _queue = List<MusicTrack>.from(_tracks);
+        _activeQueueLabel = allTracksQueueLabel;
         await playAtIndex(0);
       }
       return;
@@ -212,6 +283,44 @@ class MusicLibraryViewModel extends ChangeNotifier {
     await playAtIndex(previousIndex);
   }
 
+  Future<bool> toggleFavorite([MusicTrack? track]) async {
+    final target = track ?? _currentTrack;
+    if (target == null) {
+      return false;
+    }
+
+    final existingIndex =
+        _favoriteTracks.indexWhere((item) => item.id == target.id);
+    if (existingIndex >= 0) {
+      _favoriteTracks.removeAt(existingIndex);
+      final removedCurrentWhileFavoriteQueue =
+          _activeQueueLabel == favoriteQueueLabel &&
+              _currentTrack?.id == target.id;
+      if (removedCurrentWhileFavoriteQueue) {
+        _useAllTracksQueuePreservingCurrent();
+      } else {
+        _queue = _refreshQueueForFavoritesRemoval(_queue, target.id);
+      }
+      await localService.saveFavoriteTracks(_favoriteTracks);
+      _recalculateCurrentIndex();
+      notifyListeners();
+      return false;
+    }
+
+    final hydratedTrack = _resolveTrack(target);
+    _favoriteTracks = [hydratedTrack, ..._favoriteTracks]
+        .fold<List<MusicTrack>>(<MusicTrack>[], (items, item) {
+      if (items.any((existing) => existing.id == item.id)) {
+        return items;
+      }
+      items.add(item);
+      return items;
+    });
+    await localService.saveFavoriteTracks(_favoriteTracks);
+    notifyListeners();
+    return true;
+  }
+
   void toggleShuffle() {
     _isShuffle = !_isShuffle;
     notifyListeners();
@@ -219,23 +328,6 @@ class MusicLibraryViewModel extends ChangeNotifier {
 
   void toggleRepeat() {
     _isRepeat = !_isRepeat;
-    notifyListeners();
-  }
-
-  void setQueue(List<MusicTrack> tracks, {int startIndex = 0}) {
-    _queue = List<MusicTrack>.from(tracks);
-    if (_queue.isEmpty) {
-      _currentIndex = -1;
-      _currentTrack = null;
-    } else {
-      final boundedIndex = startIndex < 0
-          ? 0
-          : startIndex >= _queue.length
-              ? _queue.length - 1
-              : startIndex;
-      _currentIndex = boundedIndex;
-      _currentTrack = _queue[_currentIndex];
-    }
     notifyListeners();
   }
 
@@ -308,6 +400,13 @@ class MusicLibraryViewModel extends ChangeNotifier {
       _recentTracks[recentIndex] = updatedTrack;
       unawaited(localService.saveRecentTracks(_recentTracks));
     }
+
+    final favoriteIndex =
+        _favoriteTracks.indexWhere((track) => track.id == updatedTrack.id);
+    if (favoriteIndex >= 0) {
+      _favoriteTracks[favoriteIndex] = updatedTrack;
+      unawaited(localService.saveFavoriteTracks(_favoriteTracks));
+    }
   }
 
   void _syncQueueWithTracks({bool forceReset = false}) {
@@ -317,6 +416,7 @@ class MusicLibraryViewModel extends ChangeNotifier {
       _currentTrack = null;
       _currentDuration = Duration.zero;
       _currentPosition = Duration.zero;
+      _activeQueueLabel = allTracksQueueLabel;
       notifyListeners();
       return;
     }
@@ -327,27 +427,19 @@ class MusicLibraryViewModel extends ChangeNotifier {
       _currentTrack = _queue.first;
       _currentDuration = Duration(milliseconds: _currentTrack?.durationMs ?? 0);
       _currentPosition = Duration.zero;
+      _activeQueueLabel = allTracksQueueLabel;
       notifyListeners();
       return;
     }
 
-    if (_currentTrack != null) {
-      final queueIndex =
-          _queue.indexWhere((track) => track.id == _currentTrack!.id);
-      final source = queueIndex >= 0 ? _queue : _tracks;
-      final replacementIndex =
-          source.indexWhere((track) => track.id == _currentTrack!.id);
-      if (replacementIndex >= 0) {
-        _currentTrack = source[replacementIndex];
-        _currentDuration =
-            Duration(milliseconds: _currentTrack?.durationMs ?? 0);
-      }
-    }
-
+    _recentTracks = _hydrateWithTracks(_recentTracks, limit: 5);
+    _favoriteTracks = _hydrateWithTracks(_favoriteTracks);
+    _queue = _hydrateQueue(_queue, fallbackToAllTracks: true);
+    _recalculateCurrentIndex();
     notifyListeners();
   }
 
-  List<MusicTrack> _hydrateRecentTracks(List<MusicTrack> source) {
+  List<MusicTrack> _hydrateWithTracks(List<MusicTrack> source, {int? limit}) {
     if (source.isEmpty) {
       return const [];
     }
@@ -356,19 +448,94 @@ class MusicLibraryViewModel extends ChangeNotifier {
       for (final track in _tracks) track.id: track,
     };
 
-    return source
-        .map((track) => byId[track.id] ?? track)
-        .take(5)
-        .toList(growable: false);
+    var hydrated =
+        source.map((track) => byId[track.id] ?? track).toList(growable: false);
+    if (limit != null && hydrated.length > limit) {
+      hydrated = hydrated.take(limit).toList(growable: false);
+    }
+    return hydrated;
+  }
+
+  List<MusicTrack> _hydrateQueue(
+    List<MusicTrack> source, {
+    required bool fallbackToAllTracks,
+  }) {
+    final byId = {
+      for (final track in _tracks) track.id: track,
+    };
+    final hydrated =
+        source.map((track) => byId[track.id] ?? track).toList(growable: false);
+    if (hydrated.isNotEmpty) {
+      return hydrated;
+    }
+    if (fallbackToAllTracks) {
+      _activeQueueLabel = allTracksQueueLabel;
+      return List<MusicTrack>.from(_tracks);
+    }
+    return const [];
+  }
+
+  MusicTrack _resolveTrack(MusicTrack track) {
+    final match = _tracks.cast<MusicTrack?>().firstWhere(
+          (item) => item?.id == track.id,
+          orElse: () => null,
+        );
+    return match ?? track;
   }
 
   void _rememberRecent(MusicTrack track) {
-    final updated = _hydrateRecentTracks([
-      track,
+    final updated = _hydrateWithTracks([
+      _resolveTrack(track),
       ..._recentTracks.where((item) => item.id != track.id),
-    ]);
+    ], limit: 5);
     _recentTracks = updated;
     unawaited(localService.saveRecentTracks(updated));
+  }
+
+  List<MusicTrack> _refreshQueueForFavoritesRemoval(
+    List<MusicTrack> source,
+    String removedId,
+  ) {
+    if (_activeQueueLabel != favoriteQueueLabel) {
+      return source;
+    }
+    return source
+        .where((track) => track.id != removedId)
+        .toList(growable: false);
+  }
+
+  void _useAllTracksQueuePreservingCurrent() {
+    _queue = List<MusicTrack>.from(_tracks);
+    _activeQueueLabel = allTracksQueueLabel;
+  }
+
+  void _recalculateCurrentIndex() {
+    if (_queue.isEmpty) {
+      _currentIndex = -1;
+      if (_activeQueueLabel == favoriteQueueLabel) {
+        _activeQueueLabel = allTracksQueueLabel;
+      }
+      return;
+    }
+
+    if (_currentTrack == null) {
+      _currentIndex = 0;
+      _currentTrack = _queue.first;
+      return;
+    }
+
+    final queueIndex =
+        _queue.indexWhere((track) => track.id == _currentTrack!.id);
+    if (queueIndex >= 0) {
+      _currentIndex = queueIndex;
+      _currentTrack = _queue[queueIndex];
+      return;
+    }
+
+    _currentIndex = 0;
+    _currentTrack = _queue.first;
+    _currentDuration = Duration(milliseconds: _currentTrack?.durationMs ?? 0);
+    _currentPosition = Duration.zero;
   }
 
   Future<void> _handleTrackCompleted() async {

@@ -6,6 +6,7 @@ import 'hive_service.dart';
 class LocalMusicService {
   Box<Map> get _tracksBox => Hive.box<Map>(HiveService.tracksBox);
   Box<List> get _recentBox => Hive.box<List>(HiveService.recentTracksBox);
+  Box<List> get _favoriteBox => Hive.box<List>(HiveService.favoriteTracksBox);
 
   List<MusicTrack> getAllTracks() {
     return _tracksBox.values
@@ -14,8 +15,22 @@ class LocalMusicService {
   }
 
   List<MusicTrack> getRecentTracks() {
-    final items = _recentBox
-            .get(HiveService.recentTracksKey, defaultValue: <dynamic>[]) ??
+    final items = _recentBox.get(
+          HiveService.recentTracksKey,
+          defaultValue: <dynamic>[],
+        ) ??
+        <dynamic>[];
+    return items
+        .whereType<Map>()
+        .map(MusicTrack.fromMap)
+        .toList(growable: false);
+  }
+
+  List<MusicTrack> getFavoriteTracks() {
+    final items = _favoriteBox.get(
+          HiveService.favoriteTracksKey,
+          defaultValue: <dynamic>[],
+        ) ??
         <dynamic>[];
     return items
         .whereType<Map>()
@@ -32,6 +47,13 @@ class LocalMusicService {
   Future<void> saveRecentTracks(List<MusicTrack> tracks) async {
     await _recentBox.put(
       HiveService.recentTracksKey,
+      tracks.map((track) => track.toMap()).toList(growable: false),
+    );
+  }
+
+  Future<void> saveFavoriteTracks(List<MusicTrack> tracks) async {
+    await _favoriteBox.put(
+      HiveService.favoriteTracksKey,
       tracks.map((track) => track.toMap()).toList(growable: false),
     );
   }

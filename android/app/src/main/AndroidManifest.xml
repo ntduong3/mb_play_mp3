@@ -5,7 +5,7 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <application
-        android:label="mb_play_mp3"
+        android:label="Local Mp3"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -48,3 +48,4 @@
         </intent>
     </queries>
 </manifest>
+

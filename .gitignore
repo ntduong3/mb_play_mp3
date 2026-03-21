@@ -1,18 +1,34 @@
-/build/
+﻿# Flutter / Dart
 .dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
 .packages
 .pub/
-.env
+/build/
+
+# Local build caches
+.gradle-home/
+android/.gradle/
+
+# IDE
 .idea/
 .vscode/
 *.iml
-*.hprof
+
+# Logs / diagnostics
 *.log
-*.lock
-android/.gradle/
-android/app/*.iml
+*.hprof
+
+# Environment / secrets
+.env
+*.keystore
+key.properties
+
+# Generated platform files
 **/GeneratedPluginRegistrant.*
 **/Flutter/Generated.xcconfig
 **/Flutter/ephemeral/
-*.keystore
-pubspec.lock
+
+# OS files
+.DS_Store
+Thumbs.db

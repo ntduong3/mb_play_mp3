@@ -1,5 +1,5 @@
 ﻿{
-  "appTitle": "MB Play MP3",
+  "appTitle": "Local Mp3",
   "helloUser": "Hello, {name}",
   "helloSubtitle": "Ready to dive into the world of music?",
   "recommendations": "Recommendations",
@@ -25,3 +25,4 @@
   "track3005": "3005",
   "splashTitle": "MUSING"
 }
+

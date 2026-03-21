@@ -9,7 +9,7 @@ class AppLocalizationsVi extends AppLocalizations {
   AppLocalizationsVi([String locale = 'vi']) : super(locale);
 
   @override
-  String get appTitle => 'MB Play MP3';
+  String get appTitle => 'Local Mp3';
 
   @override
   String helloUser(Object name) {
@@ -17,19 +17,19 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get helloSubtitle => 'Sẵn sàng đắm chìm trong thế giới âm nhạc?';
+  String get helloSubtitle => 'S?n sàng d?m chìm trong th? gi?i âm nh?c?';
 
   @override
-  String get recommendations => 'Gợi ý';
+  String get recommendations => 'G?i ý';
 
   @override
-  String get recentListenings => 'Nghe gần đây';
+  String get recentListenings => 'Nghe g?n dây';
 
   @override
-  String get topAlbums => 'Album nổi bật';
+  String get topAlbums => 'Album n?i b?t';
 
   @override
-  String get searchPlaceholder => 'Tìm bài hát, nghệ sĩ, album hoặc playlist';
+  String get searchPlaceholder => 'Tìm bài hát, ngh? si, album ho?c playlist';
 
   @override
   String get genreRap => 'Rap';
@@ -47,7 +47,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get genreJazz => 'Jazz';
 
   @override
-  String get playingNow => 'ĐANG PHÁT';
+  String get playingNow => 'ÐANG PHÁT';
 
   @override
   String get nowPlayingSong => 'Baby Boy';
@@ -60,13 +60,13 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get artistBio =>
-      'Donald McKinley Glover Jr. (sinh 25 tháng 9, 1983), còn được biết đến với nghệ danh Childish Gambino, là một nghệ sĩ người Mỹ...';
+      'Donald McKinley Glover Jr. (sinh 25 tháng 9, 1983), còn du?c bi?t d?n v?i ngh? danh Childish Gambino, là m?t ngh? si ngu?i M?...';
 
   @override
   String get albums => 'Album';
 
   @override
-  String get popularTracks => 'Bài hát nổi bật';
+  String get popularTracks => 'Bài hát n?i b?t';
 
   @override
   String get albumAwaken => 'Awaken, My Love';

@@ -18,7 +18,6 @@ class PlayerPage extends StatefulWidget {
 
 class _PlayerPageState extends State<PlayerPage> {
   bool _didInit = false;
-  bool _isFavorite = false;
 
   @override
   void didChangeDependencies() {
@@ -27,7 +26,9 @@ class _PlayerPageState extends State<PlayerPage> {
     _didInit = true;
 
     final vm = context.read<MusicLibraryViewModel>();
-    if (vm.tracks.isNotEmpty || vm.queue.isNotEmpty || vm.currentTrack != null) {
+    if (vm.tracks.isNotEmpty ||
+        vm.queue.isNotEmpty ||
+        vm.currentTrack != null) {
       return;
     }
 
@@ -57,7 +58,7 @@ class _PlayerPageState extends State<PlayerPage> {
       );
   }
 
-  Future<void> _openAllSongs() async {
+  Future<void> _openCurrentList() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const MusicQueuePage()),
     );
@@ -71,6 +72,7 @@ class _PlayerPageState extends State<PlayerPage> {
     final currentTrack = vm.currentTrack;
     final title = currentTrack?.title ?? l10n.nowPlayingSong;
     final artist = currentTrack?.artist ?? l10n.nowPlayingArtist;
+    final isFavorite = vm.isFavoriteTrack(currentTrack);
     final totalDuration = vm.currentDuration.inMilliseconds > 0
         ? vm.currentDuration
         : Duration(milliseconds: currentTrack?.durationMs ?? 0);
@@ -98,7 +100,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed: _openAllSongs,
+                      onPressed: _openCurrentList,
                       icon: const Icon(Icons.queue_music_rounded),
                     ),
                   ],
@@ -142,15 +144,23 @@ class _PlayerPageState extends State<PlayerPage> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () {
-                        setState(() => _isFavorite = !_isFavorite);
-                        _showToast(
-                          _isFavorite ? 'Added to favorites' : 'Removed from favorites',
-                        );
-                      },
+                      onPressed: currentTrack == null
+                          ? null
+                          : () async {
+                              final added = await vm.toggleFavorite();
+                              if (!mounted) return;
+                              _showToast(
+                                added
+                                    ? 'Added to favorites'
+                                    : 'Removed from favorites',
+                              );
+                            },
                       icon: Icon(
-                        _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: _isFavorite ? const Color(0xFFFF5D6C) : Colors.white,
+                        isFavorite
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        color:
+                            isFavorite ? const Color(0xFFFF5D6C) : Colors.white,
                       ),
                     ),
                   ],
@@ -161,7 +171,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(24),
-                  onTap: _openAllSongs,
+                  onTap: _openCurrentList,
                   child: Ink(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -177,7 +187,7 @@ class _PlayerPageState extends State<PlayerPage> {
                               child: Text(
                                 vm.queue.isEmpty
                                     ? 'Queue is empty'
-                                    : 'Playing queue ${vm.currentIndex + 1}/${vm.queue.length}',
+                                    : '${vm.activeQueueLabel} ${vm.currentIndex + 1}/${vm.queue.length}',
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontWeight: FontWeight.w600,
@@ -185,7 +195,8 @@ class _PlayerPageState extends State<PlayerPage> {
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF223047),
                                 borderRadius: BorderRadius.circular(999),
@@ -194,7 +205,8 @@ class _PlayerPageState extends State<PlayerPage> {
                                 totalDuration.inMilliseconds > 0
                                     ? _formatDuration(totalDuration)
                                     : '--:--',
-                                style: const TextStyle(fontSize: 12, color: Colors.white70),
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.white70),
                               ),
                             ),
                           ],
@@ -203,8 +215,10 @@ class _PlayerPageState extends State<PlayerPage> {
                         SliderTheme(
                           data: SliderTheme.of(context).copyWith(
                             trackHeight: 4,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 6),
+                            overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 14),
                           ),
                           child: Slider(
                             value: vm.progress,
@@ -232,7 +246,8 @@ class _PlayerPageState extends State<PlayerPage> {
                           children: [
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF223047),
                                   borderRadius: BorderRadius.circular(14),
@@ -247,7 +262,9 @@ class _PlayerPageState extends State<PlayerPage> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        '${vm.tracks.length} MP3 songs',
+                                        vm.queue.isEmpty
+                                            ? 'No tracks in current list'
+                                            : '${vm.queue.length} tracks in ${vm.activeQueueLabel}',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
@@ -261,7 +278,8 @@ class _PlayerPageState extends State<PlayerPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(Icons.open_in_new_rounded, color: Color(0xFF97A5BE)),
+                            const Icon(Icons.open_in_new_rounded,
+                                color: Color(0xFF97A5BE)),
                           ],
                         ),
                       ],
@@ -282,7 +300,9 @@ class _PlayerPageState extends State<PlayerPage> {
                       },
                       icon: Icon(
                         Icons.shuffle_rounded,
-                        color: vm.isShuffle ? const Color(0xFF37C8FF) : Colors.white,
+                        color: vm.isShuffle
+                            ? const Color(0xFF37C8FF)
+                            : Colors.white,
                       ),
                     ),
                     IconButton(
@@ -311,7 +331,9 @@ class _PlayerPageState extends State<PlayerPage> {
                                 }
                               },
                         icon: Icon(
-                          vm.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          vm.isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
                           size: 36,
                           color: Colors.white,
                         ),
@@ -328,7 +350,9 @@ class _PlayerPageState extends State<PlayerPage> {
                       },
                       icon: Icon(
                         Icons.repeat_rounded,
-                        color: vm.isRepeat ? const Color(0xFF37C8FF) : Colors.white,
+                        color: vm.isRepeat
+                            ? const Color(0xFF37C8FF)
+                            : Colors.white,
                       ),
                     ),
                   ],

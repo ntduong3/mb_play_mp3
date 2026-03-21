@@ -36,14 +36,14 @@ class MusicQueuePage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'All MP3 Songs',
-                            style: TextStyle(
+                          Text(
+                            vm.activeQueueLabel,
+                            style: const TextStyle(
                                 fontSize: 24, fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${vm.tracks.length} tracks on device',
+                            '${vm.queue.length} tracks in current list',
                             style: const TextStyle(color: Color(0xFF97A5BE)),
                           ),
                         ],
@@ -76,7 +76,7 @@ class MusicQueuePage extends StatelessWidget {
                           color: const Color(0xFF1C7DFF),
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        child: const Icon(Icons.library_music_rounded,
+                        child: const Icon(Icons.queue_music_rounded,
                             color: Colors.white),
                       ),
                       const SizedBox(width: 14),
@@ -86,7 +86,7 @@ class MusicQueuePage extends StatelessWidget {
                           children: [
                             Text(
                               vm.currentTrack?.title ??
-                                  'Choose any song to start',
+                                  'Choose a track to play',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -95,8 +95,8 @@ class MusicQueuePage extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               vm.queue.isEmpty
-                                  ? 'Queue will be created from all songs'
-                                  : 'Current queue ${vm.currentIndex + 1}/${vm.queue.length}',
+                                  ? 'No track available in this list yet'
+                                  : 'Current position ${vm.currentIndex + 1}/${vm.queue.length}',
                               style: const TextStyle(color: Color(0xFF97A5BE)),
                             ),
                           ],
@@ -122,21 +122,27 @@ class MusicQueuePage extends StatelessWidget {
                               ),
                             ),
                           )
-                        : vm.tracks.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'No MP3 files available yet.',
-                                  style: TextStyle(color: Colors.white70),
+                        : vm.queue.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 24),
+                                  child: Text(
+                                    'No songs inside ${vm.activeQueueLabel} yet.',
+                                    textAlign: TextAlign.center,
+                                    style:
+                                        const TextStyle(color: Colors.white70),
+                                  ),
                                 ),
                               )
                             : ListView.separated(
                                 padding:
                                     const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                                itemCount: vm.tracks.length,
+                                itemCount: vm.queue.length,
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(height: 12),
                                 itemBuilder: (context, index) {
-                                  final track = vm.tracks[index];
+                                  final track = vm.queue[index];
                                   final isCurrent =
                                       vm.currentTrack?.id == track.id;
                                   return Material(
@@ -144,8 +150,7 @@ class MusicQueuePage extends StatelessWidget {
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(22),
                                       onTap: () async {
-                                        await vm.playTrack(track,
-                                            fromQueue: vm.tracks);
+                                        await vm.playAtIndex(index);
                                         if (!context.mounted) return;
                                         Navigator.of(context).pop();
                                       },

@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'MB Play MP3';
+  String get appTitle => 'Local Mp3';
 
   @override
   String helloUser(Object name) {

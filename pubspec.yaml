@@ -1,5 +1,5 @@
-name: mb_play_mp3
-description: Base Flutter music player (offline-first) using MVVM and Hive.
+﻿name: mb_play_mp3
+description: Local Mp3 player using MVVM and Hive.
 publish_to: "none"
 version: 0.1.0+1
 
@@ -32,3 +32,5 @@ flutter:
   generate: true
   assets:
     - assets/images/
+
+

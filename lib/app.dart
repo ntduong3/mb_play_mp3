@@ -1,4 +1,4 @@
-﻿// ignore_for_file: lines_longer_than_80_chars
+// ignore_for_file: lines_longer_than_80_chars
 
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
           return const Locale('vi');
         },
         builder: DevicePreview.appBuilder,
-        title: 'MB Play MP3',
+        title: 'Local Mp3',
         theme: AppTheme.light(),
         home: const AppShell(),
         debugShowCheckedModeBanner: false,
